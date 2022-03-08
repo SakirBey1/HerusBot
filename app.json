@@ -1,0 +1,88 @@
+
+{
+  "name": "HerusBot",
+  "logo": "https://i.hizliresim.com/fbksfrp.jpg",
+  "description": "Telegram'ın en küstah grup yöneticisi. Modüler Telegram grup yönetimi botu!",
+  "keywords": [
+    "telegram",
+    "best",
+    "group",
+    "manager",
+    "3"
+  ],
+  "repository": "hhttps://github.com/SakirBey1/HerusBot",
+  "env": {
+    "ENV": {
+      "description": "Bunu HERHANGİ BİR ŞEY olarak ayarlamak env değişkenlerini etkinleştirir",
+      "value": "ANYTHING"
+    },
+    "TOKEN": {
+      "description": "Bir dize olarak bot jetonunuz.",
+      "value": ""
+    },
+    "OWNER_ID": {
+      "description": "Sahip kimliğinizden oluşan bir tam sayı",
+      "value": ""
+    },
+    "OWNER_USERNAME": {
+      "description": "Kullanıcı adınızı",
+      "value": ""
+    },
+    "WEBHOOK": {
+      "description": "Bunu HERHANGİ BİR ŞEY olarak ayarlamak, env modu mesajlarındayken web kancalarını etkinleştirir",
+      "value": "ANYTHING"
+    },
+    "URL": {
+      "description": "https://<appname>.herokuapp.com/ benzeri Heroku Uygulaması URL'si",
+      "value": ""
+    },
+    "MESSAGE_DUMP": {
+      "description": "isteğe bağlı: insanların eski mesajlarını silmesini durdurmak için yanıtladığınız kayıtlı mesajlarınızın saklandığı bir sohbet",
+      "value": "-1007777777777"
+    },
+    "SUDO_USERS": {
+      "description": "Sudo kullanıcıları olarak kabul edilmesi gereken, boşlukla ayrılmış user_ids listesi",
+      "value": ""
+    },
+    "SUPPORT_USERS": {
+      "description": "Destek kullanıcıları olarak kabul edilmesi gereken, boşlukla ayrılmış bir user_ids listesi (gban/ungban olabilir, başka bir şey değil)",
+      "value": ""
+    },
+    "WHITELIST_USERS": {
+      "description": "Beyaz listeye alınmış olarak kabul edilmesi gereken, boşlukla ayrılmış bir user_id listesi - yasaklanamazlar.",
+      "value": ""
+    },
+    "DONATION_LINK": {
+      "description": "İsteğe bağlı: Bağış almak istediğiniz bağlantı.",
+      "value": ""
+    },
+    "PORT": {
+      "description": "Web kancalarınız için kullanılacak bağlantı noktası",
+      "value": "8443"
+    },
+    "DEL_CMDS": {
+      "description": "Bu komutu kullanma haklarına sahip olmayan kullanıcılardan komutların silinip silinmeyeceği",
+      "value": "True"
+    },
+    "STRICT_GBAN": {
+      "description": "Eski grupların yanı sıra yeni gruplarda da gban'ları zorunlu kılın. Gbanlı bir kullanıcı konuştuğunda banlanır.",
+      "value": "True"
+    },
+    "ALLOW_EXCL": {
+      "description": "Ünlem işareti kullanımına izin verilip verilmeyeceği ! komutların yanı sıra /.",
+      "value": "True"
+    },
+    "BAN_STICKER": {
+      "description": "İnsanları yasaklarken hangi çıkartmanın kullanılacağı. file_id'yi almak için https://telegram.dog/ShowJsonBot kullanın",
+      "value": "CAACAgQAAxkBAAEHAedfwdK1GHtSZe1Q0F0q6vWRsxL91gAC-QgAAoThEVJCGmPkkeA1_R4E"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql",
+      "options": {
+        "version": "10"
+      }
+    }
+  ]
+}
