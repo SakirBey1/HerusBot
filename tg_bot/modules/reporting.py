@@ -1,0 +1,142 @@
+import html
+from typing import Optional, List
+
+from telegram import Message, Chat, Update, Bot, User, ParseMode
+from telegram.error import BadRequest, Unauthorized
+from telegram.ext import CommandHandler, RegexHandler, run_async, Filters
+from telegram.utils.helpers import mention_html
+
+from tg_bot import dispatcher, LOGGER
+from tg_bot.modules.helper_funcs.chat_status import user_not_admin, user_admin
+from tg_bot.modules.log_channel import loggable
+from tg_bot.modules.sql import reporting_sql as sql
+
+REPORT_GROUP = 5
+
+
+@run_async
+@user_admin
+def report_setting(bot: Bot, update: Update, args: List[str]):
+    chat = update.effective_chat  # type: Optional[Chat]
+    msg = update.effective_message  # type: Optional[Message]
+
+    if chat.type == chat.PRIVATE:
+        if len(args) >= 1:
+            if args[0] in ("evet", "üzerinde"):
+                sql.set_user_setting(chat.id, True)
+                msg.reply_text("Raporlama açıldı! Biri bir şey rapor ettiğinde size haber verilecektir.")
+
+            elif args[0] in ("hayır", "kapalı"):
+                sql.set_user_setting(chat.id, False)
+                msg.reply_text("Raporlama kapatıldı! Herhangi bir rapor almayacaksınız.")
+        else:
+            msg.reply_text("Mevcut rapor tercihiniz: `{}`".format(sql.user_should_report(chat.id)),
+                           parse_mode=ParseMode.MARKDOWN)
+
+    else:
+        if len(args) >= 1:
+            if args[0] in ("evet", "üzerinde"):
+                sql.set_chat_setting(chat.id, True)
+                msg.reply_text("Raporlama açıldı! Raporları etkinleştiren yöneticiler, /report bilgilendirilecektir. "
+                               "veya @admin arandı.")
+
+            elif args[0] in ("hayır", "kapalı"):
+                sql.set_chat_setting(chat.id, False)
+                msg.reply_text("Raporlama kapatıldı! /report veya @admin'de hiçbir yönetici bilgilendirilmeyecektir.")
+        else:
+            msg.reply_text("Bu sohbetin mevcut ayarı: `{}`".format(sql.chat_should_report(chat.id)),
+                           parse_mode=ParseMode.MARKDOWN)
+
+
+@run_async
+@user_not_admin
+@loggable
+def report(bot: Bot, update: Update) -> str:
+    message = update.effective_message  # type: Optional[Message]
+    chat = update.effective_chat  # type: Optional[Chat]
+    user = update.effective_user  # type: Optional[User]
+
+    if chat and message.reply_to_message and sql.chat_should_report(chat.id):
+        reported_user = message.reply_to_message.from_user  # type: Optional[User]
+        chat_name = chat.title or chat.first or chat.username
+        admin_list = chat.get_administrators()
+
+        if chat.username and chat.type == Chat.SUPERGROUP:
+            msg = "<b>{}:</b>" \
+                  "\n<b>Bildirilen kullanıcı:</b> {} (<code>{}</code>)" \
+                  "\n<b>Tarafından rapor edildi:</b> {} (<code>{}</code>)".format(html.escape(chat.title),
+                                                                      mention_html(
+                                                                          reported_user.id,
+                                                                          reported_user.first_name),
+                                                                      reported_user.id,
+                                                                      mention_html(user.id,
+                                                                                   user.first_name),
+                                                                      user.id)
+            link = "\n<b>Bağlantı:</b> " \
+                   "<a href=\"http://telegram.me/{}/{}\">click here</a>".format(chat.username, message.message_id)
+
+            should_forward = False
+
+        else:
+            msg = "{} adminleri arıyor \"{}\"!".format(mention_html(user.id, user.first_name),
+                                                               html.escape(chat_name))
+            link = ""
+            should_forward = True
+
+        for admin in admin_list:
+            if admin.user.is_bot:  # can't message bots
+                continue
+
+            if sql.user_should_report(admin.user.id):
+                try:
+                    bot.send_message(admin.user.id, msg + link, parse_mode=ParseMode.HTML)
+
+                    if should_forward:
+                        message.reply_to_message.forward(admin.user.id)
+
+                        if len(message.text.split()) > 1:  # If user is giving a reason, send his message too
+                            message.forward(admin.user.id)
+
+                except Unauthorized:
+                    pass
+                except BadRequest as excp:  # TODO: cleanup exceptions
+                    LOGGER.exception("Kullanıcıyı bildirirken istisna")
+        return msg
+
+    return ""
+
+
+def __migrate__(old_chat_id, new_chat_id):
+    sql.migrate_chat(old_chat_id, new_chat_id)
+
+
+def __chat_settings__(chat_id, user_id):
+    return "Bu sohbet, /report ve @admin aracılığıyla yöneticilere kullanıcı raporları göndermek için ayarlanmıştır: `{}`".format(
+        sql.chat_should_report(chat_id))
+
+
+def __user_settings__(user_id):
+    return "Yöneticisi olduğunuz sohbetlerden raporlar alırsınız: `{}`.\nBunu PM'de /reports ile değiştirin.".format(
+        sql.user_should_report(user_id))
+
+
+__mod_name__ = "Reporting"
+
+__help__ = """
+ - /report <neden>: yöneticilere bildirmek için bir mesajı yanıtlayın.
+ - @admin: Yöneticilere bildirmek için bir mesajı yanıtlayın.
+NOT: Yöneticiler tarafından kullanılırsa bunların hiçbiri tetiklenmez
+
+*Yalnızca yönetici:*
+ - /reports <açık/kapalı>: rapor ayarını değiştirin veya mevcut durumu görüntüleyin.
+   - Öğleden sonra yapılırsa, durumunuzu değiştirir.
+   - Sohbetteyse, o sohbetin durumunu değiştirir.
+"""
+
+REPORT_HANDLER = CommandHandler("report", report, filters=Filters.group)
+SETTING_HANDLER = CommandHandler("reports", report_setting, pass_args=True)
+ADMIN_REPORT_HANDLER = RegexHandler("(?i)@admin(s)?", report)
+
+dispatcher.add_handler(REPORT_HANDLER, REPORT_GROUP)
+dispatcher.add_handler(ADMIN_REPORT_HANDLER, REPORT_GROUP)
+dispatcher.add_handler(SETTING_HANDLER)
